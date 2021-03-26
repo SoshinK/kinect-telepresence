@@ -1,5 +1,5 @@
 # offline-procesor
-This is reworked offline processor body tracking code, kindly provided to me by Renat Bashirov.
+This is reworked offline processor code from body tracking, kindly provided to me by Renat Bashirov.
 
 
 
