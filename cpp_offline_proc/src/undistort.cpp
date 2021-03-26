@@ -239,7 +239,7 @@ void remap(const k4a_image_t src, const k4a_image_t lut, k4a_image_t dst, interp
 
     for (int i = 0; i < dst_width * dst_height; i++)
     {
-	printf(">> i: %d; %d;%d %d  weights: %f %f %f %f src_width: %d\n", i, src_data[i], lut_data[i].x, lut_data[i].y, lut_data[i].weight[0], lut_data[i].weight[1], lut_data[i].weight[2], lut_data[i].weight[3], src_width);
+	//printf(">> i: %d; %d;%d %d  weights: %f %f %f %f src_width: %d\n", i, src_data[i], lut_data[i].x, lut_data[i].y, lut_data[i].weight[0], lut_data[i].weight[1], lut_data[i].weight[2], lut_data[i].weight[3], src_width);
 
         if (lut_data[i].x != INVALID && lut_data[i].y != INVALID)
         {
@@ -266,7 +266,7 @@ void remap(const k4a_image_t src, const k4a_image_t lut, k4a_image_t dst, interp
                     // INTERPOLATION_BILINEAR
                     if (neighbors[0] == 0 || neighbors[1] == 0 || neighbors[2] == 0 || neighbors[3] == 0)
                     {
-			printf("here1(\n");
+			//printf("here1(\n");
                         continue;
                     }
 
@@ -289,7 +289,7 @@ void remap(const k4a_image_t src, const k4a_image_t lut, k4a_image_t dst, interp
                     float skip_interpolation_threshold = skip_interpolation_ratio * depth_min;
                     if (depth_delta > skip_interpolation_threshold)
                     {
-			printf("here2(\n");
+			//printf("here2(\n");
                         continue;
                     }
                 }
@@ -297,7 +297,7 @@ void remap(const k4a_image_t src, const k4a_image_t lut, k4a_image_t dst, interp
                 dst_data[i] = (T)(neighbors[0] * lut_data[i].weight[0] + neighbors[1] * lut_data[i].weight[1] +
                                          neighbors[2] * lut_data[i].weight[2] + neighbors[3] * lut_data[i].weight[3] +
                                          0.5f);
-		printf("!! i: %d; dst: %d; neigh: %d %d %d %d weights: %f %f %f %f\n", i, dst_data[i], neighbors[0], neighbors[1], neighbors[2], neighbors[3], lut_data[i].weight[0], lut_data[i].weight[1], lut_data[i].weight[2], lut_data[i].weight[3]);
+		//printf("!! i: %d; dst: %d; neigh: %d %d %d %d weights: %f %f %f %f\n", i, dst_data[i], neighbors[0], neighbors[1], neighbors[2], neighbors[3], lut_data[i].weight[0], lut_data[i].weight[1], lut_data[i].weight[2], lut_data[i].weight[3]);
             }
             else
             {
