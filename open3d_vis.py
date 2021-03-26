@@ -8,7 +8,7 @@ import json
 # img = cv2.imread('/home/kvsoshin/Kinect Telepresence/depth0592.png', -1)
 img = cv2.imread('output_aligned.png', -1)
 # img = cv2.imread('/home/kvsoshin/Kinect Telepresence/output_aligned6.png', -1)
-color = cv2.imread('001236.jpg', -1).astype(np.uint16)
+color = cv2.imread('color0177.png', -1).astype(np.uint16)
 color = cv2.cvtColor(color, cv2.COLOR_BGR2RGB)
 
 # color_raw = o3d.io.read_image("/home/kvsoshin/Kinect Telepresence/output_aligned2.png")

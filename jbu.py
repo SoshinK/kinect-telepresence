@@ -17,7 +17,7 @@ import cv2 as cv2
 # img_ref = 'color0592.png'
 # output = 'output.png'
 img_source = 'depth_transformed.png'
-img_ref = "color_undist2.png"
+img_ref = "color0177.png"
 output = 'output_aligned.png'
 args_radius = 2
 args_sigma_spatial = 1.5
@@ -72,12 +72,32 @@ def process_row(y):
       #    print(">>>", patch_source_upsampled[patch_source_upsampled_mask])
       # print(patch_source_upsampled.shape, weight.shape, patch_source_upsampled[patch_source_upsampled_mask].shape, patch_source_upsampled_mask.shape)
       k_p = weight[patch_source_upsampled_mask].sum(axis=0)
-      if k_p == 0:
-         k_p = 1
-      # print(weight)
-      # exit()
-      result[x - padding] = np.round(np.sum(weight[patch_source_upsampled_mask] * patch_source_upsampled[patch_source_upsampled_mask], axis=0) / k_p)
+      #======
+      if patch_source_upsampled[patch_source_upsampled_mask].shape[0] != 0:
+         # print(patch_source_upsampled[patch_source_upsampled_mask])   
+         min_depth = np.amin(patch_source_upsampled[patch_source_upsampled_mask])
+         max_depth = np.amax(patch_source_upsampled[patch_source_upsampled_mask])
+         depth_delta = max_depth - min_depth
 
+         skip_interpolation_ratio = 0.04693441759
+
+         skip_interpolation_threshold = skip_interpolation_ratio * min_depth
+         if depth_delta > skip_interpolation_threshold:
+            # print("!", x, y)
+            result[x - padding] = source_upsampled[y, x]
+         else:
+      #======
+            if k_p == 0:
+               k_p = 1
+            # print(weight)
+            # exit()
+            result[x - padding] = np.round(np.sum(weight[patch_source_upsampled_mask] * patch_source_upsampled[patch_source_upsampled_mask], axis=0) / k_p)
+      else:
+         if k_p == 0:
+            k_p = 1
+            # print(weight)
+            # exit()
+         result[x - padding] = np.round(np.sum(weight[patch_source_upsampled_mask] * patch_source_upsampled[patch_source_upsampled_mask], axis=0) / k_p)
    return result
 
 executor = ProcessPoolExecutor(max_workers=8)
