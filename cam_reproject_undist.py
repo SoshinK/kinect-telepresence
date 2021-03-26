@@ -3,6 +3,7 @@ import cv2 as cv2
 import open3d as o3d
 import matplotlib.pyplot as plt
 import json
+from undistort import undistort
 
 # http://nicolas.burrus.name/index.php/Research/KinectCalibration
 # https://stackoverflow.com/questions/31265245/extracting-3d-coordinates-given-2d-image-points-depth-map-and-camera-calibratio
@@ -153,19 +154,34 @@ def reproject2(depth, depth_intrinsic_mat, depth_intrinsic_undist_mat, rgb_intri
     '''
 
     # depth = cv2.undistort(depth, depth_intrinsic_undist_mat, depth_dist_coeffs, None, None)
-
+    depth = undistort(depth, depth_intrinsic_mat, depth_intrinsic_undist_mat, depth_dist_coeffs)
     # plt.imshow(depth)
     # plt.show()
 
-    xyd_list = depth2xyd_list(depth).astype(np.float32)
-
-    xyd_list = drop_zero_depths(xyd_list)
+    xyd_list = depth2xyd_list(depth.copy()).astype(np.float32)
+    # print("!", xyd_list.shape)
+    # xyd_list = drop_zero_depths(xyd_list)
     
-    xyd_list = undistort_points(xyd_list, depth_intrinsic_mat, depth_dist_coeffs, depth_intrinsic_undist_mat)#, cv2.Rodrigues(rot_vec)[0], depth_intrinsic_undist_mat)
+    # xyd_list = undistort_points(xyd_list, depth_intrinsic_mat, depth_dist_coeffs, depth_intrinsic_undist_mat)#, cv2.Rodrigues(rot_vec)[0], depth_intrinsic_undist_mat)
     
+    # after = xyd_list2depthmap(xyd_list.copy(), depth.shape)
+    # print("!", after.shape)
+    # plt.subplot(131)
+    # plt.title("after")
+    # plt.imshow(after)
+    # plt.subplot(132)
+    # plt.title("before")
+    # plt.imshow(depth)
+    # plt.subplot(133)
+    # diff = depth - after
+    # print("LOL", np.amax(diff), np.amin(diff))
+    # plt.imshow(diff / np.amax(diff))
+    # plt.show()
+    # cv2.imwrite("depth_undist.png",after)
     xyz3d_list = unproject_to_3d(xyd_list, depth_intrinsic_undist_mat)
     
     xyz3d_list = cv2.Rodrigues(rot_vec)[0] @ xyz3d_list + t_vec.reshape((-1, 1))
+    
     
     xyz3d_list = rgb_intrinsic_undist_mat @ xyz3d_list
     
@@ -221,9 +237,12 @@ def open3d_vis2(xyz, color, camera_intrinsic_params):
     # o3d.visualization.draw_geometries([pcd])
 
 def main():
-    path_input_depth = 'depth1626.png'
-    path_input_color = 'color1626.jpg'
-    json_path = '../mkv_meta.json'
+    # path_input_depth = '001236.png'
+    # path_input_color = '001236.jpg'
+    path_input_depth = 'depth0177.png'
+    path_input_color = 'color0177.png'
+    
+    json_path = 'mkv_meta.json'
     path_output_depth = 'depth_transformed.png'
 
 
@@ -264,11 +283,11 @@ def main():
 
     plt.imshow(color)
     plt.show()
-    color_undist = cv2.undistort(color.copy(), rgb_intrinsic_mat, rgb_dist_coeffs,  newCameraMatrix=rgb_intrinsic_undist_mat)
+    color_undist = color.copy()#cv2.undistort(color.copy(), rgb_intrinsic_mat, rgb_dist_coeffs,  newCameraMatrix=rgb_intrinsic_undist_mat)
     # color_undist = cv2.undistort(color_undist, rgb_intrinsic_mat, rgb_dist_coeffs, newCameraMatrix=rgb_intrinsic_undist_mat)
     plt.imshow(color_undist)
     plt.show()
-    cv2.imwrite("color_undist2.png", color_undist)
+    cv2.imwrite("color_undist2.png", color_undist[:, :, [2, 1, 0]])
 
 
     t = np.array(params['depth_to_rgb']['t'])
@@ -320,6 +339,7 @@ def main():
     #                                         'cx': params['rgb_undistorted_intrinsics']['cx'],
     #                                         'cy': params['rgb_undistorted_intrinsics']['cy']})
     print("!!!!", depth_reprojected_3d[depth_reprojected_3d != 0].shape, depth_reprojected_3d.shape)
+
     xyd_list = depth2xyd_list(depth_reprojected_3d).astype(np.float32)
 
     xyz3d_list = unproject_to_3d(xyd_list, rgb_intrinsic_undist_mat).T
@@ -334,7 +354,7 @@ def main():
                                             'cx': params['rgb_undistorted_intrinsics']['cx'],
                                             'cy': params['rgb_undistorted_intrinsics']['cy']})
 
-    # cv2.imwrite(path_output_depth, np.uint16(depth_reprojected))
+    cv2.imwrite(path_output_depth, np.uint16(depth_reprojected_3d))
 
 if __name__ == '__main__':
     main()
