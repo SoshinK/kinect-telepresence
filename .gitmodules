@@ -1,0 +1,3 @@
+[submodule "cpp_offline_proc/extern/glfw/src2"]
+	path = cpp_offline_proc/extern/glfw/src2
+	url = https://github.com/glfw/glfw
