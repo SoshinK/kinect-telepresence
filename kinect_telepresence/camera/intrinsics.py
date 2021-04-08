@@ -3,7 +3,7 @@ class Intrinsics
 Stores intrinsic camera parameters, such as camera matrix and distortion coefficients
 '''
 
-from utils.utils import check_mtrx
+from kinect_telepresence.utils.utils import check_mtrx
 import numpy as np
 
 
