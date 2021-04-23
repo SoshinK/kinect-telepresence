@@ -59,6 +59,66 @@ def create_undistortion_lut(depth_shape, intrinsic_matrix, intrinsic_matrix_undi
             # print(x, y, "ray: ", ray, "distorted: ", distorted, "src: ", src, "lut_data: ", lut_data[-1])
     return lut_data
 
+def create_undistortion_lut_fast(depth_shape, intrinsic_matrix, intrinsic_matrix_undist, 
+                            rot_vec, t_vec,
+                            dist_coefs, interpolation_type):
+    assert len(depth_shape) == 2
+    
+    height, width = depth_shape
+    fx, fy = intrinsic_matrix_undist[0, 0], intrinsic_matrix_undist[1, 1]
+    px, py = intrinsic_matrix_undist[0, 2], intrinsic_matrix_undist[1, 2]
+
+    ii, jj = np.meshgrid(np.arange(width), np.arange(height))
+
+    rays = np.array([(np.float32(ii.ravel()) - px) / fx,
+            (np.float32(jj.ravel()) - py) / fy,
+            np.ones(width * height, dtype=np.float32)])
+
+    distorted, _ = cv2.projectPoints(rays, rot_vec, t_vec, intrinsic_matrix, dist_coefs)
+    distorted = distorted[:, 0, :].T # (2, N)
+    # print("dist", distorted.shape, rays.shape)#, y, x)
+    # exit()
+    # src = np.array([0, 0])
+
+    src = np.array([])
+
+    if interpolation_type == 'nearest':
+        src = np.array([np.int32(np.floor(distorted[0] + 0.5)), np.int32(np.floor(distorted[1] + 0.5))])
+    elif interpolation_type == 'bilinear':
+        src = np.array([np.int32(np.floor(distorted[0])), np.int32(np.floor(distorted[1]))])
+    else:
+        ValueError("Unknown interpolation type")
+    
+    lut_data = np.array([[0, 0] for _ in range(height * width)]).T
+    # print("!!", lut_data.shape)
+    mask1 = src[0] >= 0
+    mask2 = src[1] >= 0
+    mask3 = src[0] < width
+    mask4 = src[1] < height
+
+    mask = mask1 & mask2 & mask3 & mask4
+    
+    lut_data[:, mask] = src[:, mask]
+    lut_data[:, ~mask] = np.array([[INVALID_LUT_DATA, INVALID_LUT_DATA] for _ in range(mask[~mask].shape[0])]).T
+    
+    if interpolation_type == 'bilinear':
+        weights = np.array([[0., 0., 0., 0.] for _ in range(height * width)]).T
+        weights[:, ~mask] = np.array([[INVALID_LUT_DATA, INVALID_LUT_DATA, INVALID_LUT_DATA, INVALID_LUT_DATA] for _ in range(mask[~mask].shape[0])]).T
+
+        w_x = distorted[0][mask] - src[0][mask]
+        w_y = distorted[1][mask] - src[1][mask]
+        w0 = (1 - w_x) * (1 - w_y)
+        w1 = w_x * (1 - w_y)
+        w2 = (1 - w_x) * w_y
+        w3 = w_x * w_y 
+        
+        weights[0, mask] = w0
+        weights[1, mask] = w1
+        weights[2, mask] = w2
+        weights[3, mask] = w3 
+        lut_data = np.append(lut_data, weights, axis=0)
+        
+    return lut_data.T
 
 def remap(src_img, lut, interpolation_type):
     assert len(src_img.shape) == 2
@@ -72,28 +132,28 @@ def remap(src_img, lut, interpolation_type):
 
     for i in range(src_img_flattened.shape[0]):
         # print(">>", i, src_img_flattened[i], lut[i], width)
-        if lut[i] != INVALID_LUT_DATA:
+        if lut[i][0] != INVALID_LUT_DATA:
 
             if interpolation_type == 'nearest':
                 dst_img[i] = src_img_flattened[lut[i][1] * width + lut[i][0]]
             elif interpolation_type == 'bilinear':
 
-                neighbors = [src_img_flattened[lut[i][1] * width + lut[i][0]],
-                            src_img_flattened[lut[i][1] * width + lut[i][0] + 1],
-                            src_img_flattened[(lut[i][1] + 1) * width + lut[i][0]],
-                            src_img_flattened[(lut[i][1] + 1) * width + lut[i][0] + 1]
+                neighbors = [src_img_flattened[int(lut[i][1] * width + lut[i][0])],
+                            src_img_flattened[int(lut[i][1] * width + lut[i][0] + 1)],
+                            src_img_flattened[int((lut[i][1] + 1) * width + lut[i][0])],
+                            src_img_flattened[int((lut[i][1] + 1) * width + lut[i][0] + 1)]
                             ]
                 if neighbors[0] == 0 or neighbors[1] == 0 or neighbors[2] == 0 or neighbors[3] == 0:
                     # print("here1(")
                     continue
-                skip_interpolation_ratio = 0.04693441759
-                depth_min = np.amin(neighbors)
-                depth_max = np.amax(neighbors)
-                depth_delta = depth_max - depth_min
-                skip_interpolation_threshold = skip_interpolation_ratio * depth_min
-                if depth_delta > skip_interpolation_threshold:
-                    # print("here2(")
-                    continue
+                # skip_interpolation_ratio = 0.04693441759
+                # depth_min = np.amin(neighbors)
+                # depth_max = np.amax(neighbors)
+                # depth_delta = depth_max - depth_min
+                # skip_interpolation_threshold = skip_interpolation_ratio * depth_min
+                # if depth_delta > skip_interpolation_threshold:
+                #     # print("here2(")
+                #     continue ### WHY????????????
 
                 dst_img[i] = neighbors[0] * lut[i][2] + \
                             neighbors[1] * lut[i][3] + \
@@ -104,15 +164,76 @@ def remap(src_img, lut, interpolation_type):
                 ValueError("Unknown interpolation type")
     return dst_img.reshape(src_img.shape)
 
+def remap_fast(src_img, lut, interpolation_type):
+    assert len(src_img.shape) == 2
+    height, width = src_img.shape
+    
+    src_img_flattened = src_img.reshape((-1))
+    
+    assert src_img_flattened.shape[0] == len(lut)
+
+    dst_img = np.zeros_like(src_img_flattened)
+
+    mask = lut[:, 0] != INVALID_LUT_DATA
+    print(lut.shape, src_img_flattened.shape, lut[mask].shape)
+    if interpolation_type == 'nearest':
+        dst_img[mask] = src_img_flattened[lut[mask:, 1] * width + lut[mask:, 0]]
+    elif interpolation_type == 'bilinear':
+        # print(src_img_flattened[np.int32(lut[mask, 1] * width + lut[mask, 0])])
+        # exit()
+        neighbors = np.zeros((src_img_flattened.shape[0], 4))
+        neighbors[mask] = np.array([src_img_flattened[np.int32(lut[mask, 1] * width + lut[mask, 0])],
+                            src_img_flattened[np.int32(lut[mask, 1] * width + lut[mask, 0] + 1)],
+                            src_img_flattened[np.int32((lut[mask, 1] + 1) * width + lut[mask, 0])],
+                            src_img_flattened[np.int32((lut[mask, 1] + 1) * width + lut[mask, 0] + 1)]
+                            ]).T
+        idxs_where_eq_zero = np.unique(np.argwhere(neighbors == 0)[:, 0])
+        mask_where_not_eq_zero = np.ones(src_img_flattened.shape[0], dtype=bool)
+        mask_where_not_eq_zero[idxs_where_eq_zero] = False
+        print(mask_where_not_eq_zero[mask_where_not_eq_zero == True].shape)
+        
+
+        # skip_interpolation_ratio = 0.04693441759
+        # depth_mins = np.min(neighbors, axis=1)
+        # depth_max = np.max(neighbors, axis=1)
+        # depth_deltas = depth_max - depth_mins
+        
+        # skip_interpolation_thresholds = skip_interpolation_ratio * depth_deltas
+
+        # mask_where_not_skip = depth_deltas <= skip_interpolation_thresholds
+        # print(mask_where_not_skip[mask_where_not_skip == True].shape)
+        # mask = mask_where_not_skip & mask_where_not_eq_zero
+        # print(mask[mask == True].shape)
+        # exit()
+        mask_where_calc = mask_where_not_eq_zero
+        dst_img[mask_where_calc] = np.sum(neighbors[mask_where_calc] * lut[mask_where_calc, 2:], axis=1) + 0.5
+
+    return dst_img.reshape(src_img.shape)
+
+
 def undistort(distorted, intrinsic_mat, intrinsic_mat_undist, dist_coefs, interpolation_type='bilinear'):
-    lut = create_undistortion_lut(distorted.shape, 
+    print("hopa!", flush=True)
+    lut = create_undistortion_lut_fast(distorted.shape, 
                                 intrinsic_mat, 
                                 intrinsic_mat_undist, 
                                 np.array([0., 0., 0.]), 
                                 np.array([0., 0., 0.]), 
                                 dist_coefs, 
                                 interpolation_type)
-    undist = remap(distorted.copy(), lut, interpolation_type)
+    # lut2 = create_undistortion_lut(distorted.shape, 
+    #                             intrinsic_mat, 
+    #                             intrinsic_mat_undist, 
+    #                             np.array([0., 0., 0.]), 
+    #                             np.array([0., 0., 0.]), 
+    #                             dist_coefs, 
+    #                             interpolation_type)
+    # for i in range(len(lut2)):
+    #     print(lut[i], lut2[i])
+    #     # exit()
+    # exit()
+    print("alal", lut.shape, flush=True)
+    undist = remap_fast(distorted.copy(), lut, interpolation_type)
+    print("yes!", flush=True)
     return undist
 
 def main():

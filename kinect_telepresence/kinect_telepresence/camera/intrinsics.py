@@ -71,13 +71,62 @@ class Intrinsics:
 
     @classmethod
     def from_meta_dict(cls, meta_dict: dict):
-        raise NotImplementedError
+        pass
 
     def get_meta_dict(self):
         raise NotImplementedError
 
     def calculate_undist_matrix(self):
         raise NotImplementedError
+
+class DepthIntrinsics(Intrinsics):
+    @classmethod
+    def from_meta_dict(cls, meta_dict: dict):
+        depth_intrinsics = meta_dict['depth_intrinsics']
+        depth_undistorted_intrinsics = meta_dict['depth_undistorted_intrinsics']
+
+        cam_mtrx_dist = np.array([[depth_intrinsics['fx'], 0, depth_intrinsics['cx']],
+                                [0, depth_intrinsics['fy'], depth_intrinsics['cy']],
+                                [0, 0, 1]])
+        cam_mtrx_undist =  np.array([[depth_undistorted_intrinsics['fx'], 0, depth_undistorted_intrinsics['px']],
+                                [0, depth_undistorted_intrinsics['fy'], depth_undistorted_intrinsics['py']],
+                                [0, 0, 1]])
+        resolution = (meta_dict['depth_resolution']['h'], meta_dict['depth_resolution']['w'])
+        dist_coeffs = np.array([depth_intrinsics["k1"],
+                                depth_intrinsics["k2"],
+                                depth_intrinsics["p1"],
+                                depth_intrinsics["p2"],
+                                depth_intrinsics["k3"],
+                                depth_intrinsics["k4"],
+                                depth_intrinsics["k5"],
+                                depth_intrinsics["k6"]
+                            ])
+        return DepthIntrinsics(cam_mtrx_dist, cam_mtrx_undist, resolution, dist_coeffs)
+
+class RgbIntrinsics(Intrinsics):
+    @classmethod
+    def from_meta_dict(cls, meta_dict: dict):
+        rgb_intrinsics = meta_dict['rgb_intrinsics']
+        rgb_undistorted_intrinsics = meta_dict['rgb_undistorted_intrinsics']
+
+        cam_mtrx_dist = np.array([[rgb_intrinsics['fx'], 0, rgb_intrinsics['cx']],
+                                [0, rgb_intrinsics['fy'], rgb_intrinsics['cy']],
+                                [0, 0, 1]])
+        cam_mtrx_undist =  np.array([[rgb_undistorted_intrinsics['fx'], 0, rgb_undistorted_intrinsics['cx']],
+                                [0, rgb_undistorted_intrinsics['fy'], rgb_undistorted_intrinsics['cy']],
+                                [0, 0, 1]])
+        resolution = (meta_dict['color_resolution']['h'], meta_dict['color_resolution']['w'])
+        dist_coeffs = np.array([rgb_intrinsics["k1"],
+                                rgb_intrinsics["k2"],
+                                rgb_intrinsics["p1"],
+                                rgb_intrinsics["p2"],
+                                rgb_intrinsics["k3"],
+                                rgb_intrinsics["k4"],
+                                rgb_intrinsics["k5"],
+                                rgb_intrinsics["k6"]
+                            ])
+        return DepthIntrinsics(cam_mtrx_dist, cam_mtrx_undist, resolution, dist_coeffs)
+
 
 def test():
     a = Intrinsics(np.eye(3), other_params={'keka':42})

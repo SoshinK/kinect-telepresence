@@ -4,6 +4,7 @@ from PIL import Image
 import numpy as np
 from concurrent.futures import ProcessPoolExecutor
 import cv2 as cv2 
+import sys
 # parser = argparse.ArgumentParser(description="Perform Joint Bilateral Upsampling with a source and reference image")
 # parser.add_argument("source", help="Path to the source image")
 # parser.add_argument("reference", help="Path to the reference image")
@@ -98,10 +99,11 @@ def process_row(y):
             # print(weight)
             # exit()
          result[x - padding] = np.round(np.sum(weight[patch_source_upsampled_mask] * patch_source_upsampled[patch_source_upsampled_mask], axis=0) / k_p)
+   exit()
    return result
 
 executor = ProcessPoolExecutor(max_workers=8)
-result = executor.map(process_row, range(reference_image.height))
+result = executor.map(process_row, range(reference_image.height), chunksize=sys.maxsize)
 executor.shutdown(True)
 # Image.fromarray(np.array(list(result)).astype(np.uint8)).save(output)
 result = np.array(list(result))

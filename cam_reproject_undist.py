@@ -239,8 +239,8 @@ def open3d_vis2(xyz, color, camera_intrinsic_params):
 def main():
     # path_input_depth = '001236.png'
     # path_input_color = '001236.jpg'
-    path_input_depth = 'depth0177.png'
-    path_input_color = 'color0177.png'
+    path_input_depth = '../depth0592.png'
+    path_input_color = '../color0592.png'
     
     json_path = 'mkv_meta.json'
     path_output_depth = 'depth_transformed.png'

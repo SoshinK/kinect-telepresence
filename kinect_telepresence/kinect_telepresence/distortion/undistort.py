@@ -89,7 +89,7 @@ class DepthDistortionRectifier(DistortionRectifier):
             weights[2, mask] = w2
             weights[3, mask] = w3 
             lut_data = np.append(lut_data, weights, axis=0)
-
+        return lut_data.T
 
     def __call__(self, depthmap):
         check_mtrx(depthmap, "depthmap", self._intrinsics.resolution)
