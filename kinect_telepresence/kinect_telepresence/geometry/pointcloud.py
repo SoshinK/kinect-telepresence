@@ -13,24 +13,25 @@ class PointCloud:
     def __init__(self, points):
         self._points = np.array(points).astype(PointCloud.pcd_default_dtype)
         if len(self._points.shape) != 2:
-            ValueError("Wrong points array shape. It should have (N, 3) or (N, 4) size.")
-        if not self._points.shape[1] in [3, 4]:
-            ValueError("Wrong points array shape. It should have (N, 3) or (N, 4) size.")
+            raise ValueError("Wrong points array shape. It should have (N, 3) or (N, 4) size.")
+        if not self._points.shape[1] in (3, 4):
+            raise ValueError("Wrong points array shape. It should have (N, 3) or (N, 4) size.")
 
     @classmethod   
-    def from_depth(depthmap: np.ndarray, intrinsics: Intrinsics):
+    def from_depth(cl, depthmap: np.ndarray):
         '''
         Do not confuse with unprojection of depthmap, acquired by certain depth camera, to 3d space.
         
         This function returns pointcloud with coordinates (i, j, d), where i - number of row, 
         j - number of column, d - depth stored in pixel (i,j).
         '''
+        depthmap = np.array(depthmap)
         if len(depthmap.shape) != 2:
-            ValueError("Wrong depth shape. Only 1-channel depthmaps are allowed")
+            raise ValueError("Wrong depth shape. Only 1-channel depthmaps are allowed")
         xx, yy = np.meshgrid(np.arange(depthmap.shape[1]), np.arange(depthmap.shape[0]))
         points = np.array([yy.reshape((-1)), xx.reshape((-1)), depthmap.reshape((-1))])
         points = points[[1, 0, 2]]
-        return PointCloud(points)
+        return PointCloud(points.T)
 
     def compose_depth(self, depthmap_size):
         '''
@@ -98,5 +99,12 @@ def test():
     print(pcd.p3d)
     print(pcd.p4d)
 
+def test2():
+    depth = [[1, 2, 3],
+            [4, 5, 6],
+            [7, 8, 9]]
+    pcd = PointCloud.from_depth(depth, )
+    print(pcd.p3d)
+
 if __name__ == '__main__':
-    test()
+    test2()
