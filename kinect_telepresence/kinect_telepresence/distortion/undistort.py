@@ -36,16 +36,17 @@ class DepthDistortionRectifier(DistortionRectifier):
 
         ii, jj = np.meshgrid(np.arange(width), np.arange(height))
 
-        rays = np.array([(np.float32(ii.ravel()) - px) / fx,
-                (np.float32(jj.ravel()) - py) / fy,
-                np.ones(width * height, dtype=np.float32)])
+        rays = np.array([(ii.ravel() - px) / fx,
+                (jj.ravel() - py) / fy,
+                np.ones(width * height)])
 
-        distorted, _ = cv2.projectPoints(rays, np.zeros(3), np.zeros(3), intrinsics.cam_mtrx_dist, intrinsics.dist_coeffs)
+        # next line with argument 'rays' works on my machine, 
+        # however on venv it requires 'rays' to have Nx3 shape, i.e. rays should be transposed
+        # idk why  
+        distorted, _ = cv2.projectPoints(rays.T, np.zeros(3), np.zeros(3), intrinsics.cam_mtrx_dist, intrinsics.dist_coeffs)
+        
         distorted = distorted[:, 0, :].T # (2, N)
-        # print("dist", distorted.shape, rays.shape)#, y, x)
-        # exit()
-        # src = np.array([0, 0])
-
+        
         src = np.array([])
 
         if interpolation_type == 'nearest':
@@ -56,7 +57,7 @@ class DepthDistortionRectifier(DistortionRectifier):
             ValueError("Unknown interpolation type")
         
         lut_data = np.array([[0, 0] for _ in range(height * width)]).T
-        # print("!!", lut_data.shape)
+
         mask1 = src[0] >= 0
         mask2 = src[1] >= 0
         mask3 = src[0] < width
@@ -103,12 +104,10 @@ class DepthDistortionRectifier(DistortionRectifier):
         dst_img = np.zeros_like(depthmap_flattened)
 
         mask = self._undistortion_lut[:, 0] != DepthDistortionRectifier.INVALID_LUT_DATA
-        # print(self._undistortion_lut.shape, depthmap_flattened.shape, self._undistortion_lut[mask].shape)
+        
         if self._interpolation_type == 'nearest':
             dst_img[mask] = depthmap_flattened[self._undistortion_lut[mask:, 1] * width + self._undistortion_lut[mask:, 0]]
         elif self._interpolation_type == 'bilinear':
-            # print(depthmap_flattened[np.int32(self._undistortion_lut[mask, 1] * width + self._undistortion_lut[mask, 0])])
-            # exit()
             neighbors = np.zeros((depthmap_flattened.shape[0], 4))
             neighbors[mask] = np.array([depthmap_flattened[np.int32(self._undistortion_lut[mask, 1] * width + self._undistortion_lut[mask, 0])],
                                 depthmap_flattened[np.int32(self._undistortion_lut[mask, 1] * width + self._undistortion_lut[mask, 0] + 1)],
@@ -118,7 +117,6 @@ class DepthDistortionRectifier(DistortionRectifier):
             idxs_where_eq_zero = np.unique(np.argwhere(neighbors == 0)[:, 0])
             mask_where_not_eq_zero = np.ones(depthmap_flattened.shape[0], dtype=bool)
             mask_where_not_eq_zero[idxs_where_eq_zero] = False
-            # print(mask_where_not_eq_zero[mask_where_not_eq_zero == True].shape)
             
             mask_where_calc = mask_where_not_eq_zero
             dst_img[mask_where_calc] = np.sum(neighbors[mask_where_calc] * self._undistortion_lut[mask_where_calc, 2:], axis=1) + 0.5

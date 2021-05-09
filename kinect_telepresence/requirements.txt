@@ -1,5 +1,7 @@
 numpy==1.17.0
 matplotlib==3.3.4
-open3d==0.12.0
+open3d==0.11.2
 numba==0.47.0
 opencv-python==3.4.2.17
+llvmlite==0.32.1
+

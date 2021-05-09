@@ -12,6 +12,12 @@ from kinect_telepresence.geometry.pointcloud import PointCloud
 from kinect_telepresence.distortion.undistort import DepthDistortionRectifier, RgbDistortionRectifier
 from kinect_telepresence.filtering.jbu import JBU
 
+from pathlib import Path
+
+SCRIPT_PATH = Path(__file__).parent.absolute()
+TRUNK_PATH = SCRIPT_PATH.parent
+print(SCRIPT_PATH)
+
 def main():
     path_input_depth = '../depth0592.png'
     path_input_color = '../color0592.png'
@@ -22,17 +28,19 @@ def main():
 
     with open(json_path) as f:
         params = json.load(f)
-    depth_intrinsics = DepthIntrinsics.from_meta_dict(params)
+    depth_intrinsics = DepthIntrinsics.from_meta_dict(params)   
     rgb_intrinsics = RgbIntrinsics.from_meta_dict(params)
 
 
     depth_dist_rectifier = DepthDistortionRectifier(depth_intrinsics, 'bilinear')
     rgb_dist_rectifier = RgbDistortionRectifier(rgb_intrinsics, 'bilinear')
     
-    depthmap = cv2.imread(path_input_depth, -1)
-    rgb = cv2.cvtColor(cv2.imread(path_input_color), cv2.COLOR_BGR2RGB)
-    # rgb = rgb_dist_rectifier(rgb)
-    gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY)
+    with open(path_input_depth) as f:
+        depthmap = cv2.imread(path_input_depth, -1)
+    with open(path_input_color) as f:
+        rgb = cv2.cvtColor(cv2.imread(path_input_color), cv2.COLOR_BGR2RGB)
+        # rgb = rgb_dist_rectifier(rgb)
+        gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY)
 
 
     t = np.array(params['depth_to_rgb']['t'])
