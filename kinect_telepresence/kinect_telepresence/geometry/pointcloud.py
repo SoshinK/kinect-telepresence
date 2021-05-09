@@ -5,6 +5,7 @@ class Pointcloud
 import numpy as np
 from kinect_telepresence.camera.intrinsics import Intrinsics
 from kinect_telepresence.utils.utils import check_mtrx
+import open3d as o3d
 
 class PointCloud:
 
@@ -16,6 +17,9 @@ class PointCloud:
             raise ValueError("Wrong points array shape. It should have (N, 3) or (N, 4) size.")
         if not self._points.shape[1] in (3, 4):
             raise ValueError("Wrong points array shape. It should have (N, 3) or (N, 4) size.")
+
+    def __len__(self):
+        return self._points.shape[0]
 
     @classmethod   
     def from_depth(cl, depthmap: np.ndarray):
@@ -46,19 +50,17 @@ class PointCloud:
         '''
         check_mtrx(np.array(depthmap_size), "depth map size", (2,))
 
-        depthmap = np.full(depthmap_size, np.inf)
+        depthmap = np.zeros(depthmap_size)
 
         xyd_list = self.p3d.T
 
         xyd_list[:2] = np.round(xyd_list[:2])
+
         mask = (xyd_list[0] >= 0) & (xyd_list[0] < depthmap_size[1]) & (xyd_list[1] >= 0) & (xyd_list[1] < depthmap_size[0])
         xyd_list = xyd_list[:, mask]
         
-        for point in xyd_list.T:
-            if depthmap[np.uint16(point[1]), np.uint16(point[0])] > point[2]:
-                depthmap[np.uint16(point[1]), np.uint16(point[0])] = point[2]
-        
-        depthmap[depthmap == np.inf] = 0
+        depthmap[np.uint16(xyd_list[1]), np.uint16(xyd_list[0])] = xyd_list[2]
+
 
         return depthmap
 
@@ -82,6 +84,21 @@ class PointCloud:
         else:
             return np.hstack((self._points, np.ones((self._points.shape[0], 1))))
 
+    def open3d_visualize(self, color_image=None):
+        pc = o3d.geometry.PointCloud()
+        pc.points = o3d.utility.Vector3dVector(self.p3d)
+        if not color_image is None:
+            if color_image.reshape(-1, 3).shape != self.p3d.shape:
+                raise ValueError("Number of points in point cloud and color image don't match")
+            pc.colors = o3d.utility.Vector3dVector(color_image.reshape(-1, 3))
+        pc.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
+
+        o3d.visualization.draw_geometries([pc])
+
+        return pc
+
+        
+
     
 
 def test():
@@ -98,6 +115,7 @@ def test():
                     [10, 11, 12, 10]])
     print(pcd.p3d)
     print(pcd.p4d)
+    print(len(pcd))
 
 def test2():
     depth = [[1, 2, 3],
@@ -105,6 +123,7 @@ def test2():
             [7, 8, 9]]
     pcd = PointCloud.from_depth(depth, )
     print(pcd.p3d)
+    print(len(pcd))
 
 if __name__ == '__main__':
     test2()
